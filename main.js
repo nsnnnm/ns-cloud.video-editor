@@ -1,14 +1,28 @@
+// DOM
 const fileInput = document.getElementById("fileInput");
 const video = document.getElementById("video");
 const fileList = document.getElementById("fileList");
 const timeline = document.getElementById("timeline");
 
+// 状態
 let clips = [];
 let currentFile = null;
+let ffmpeg = null;
+let ffmpegLoaded = false;
 
-// FFmpeg
-const { createFFmpeg, fetchFile } = FFmpeg;
-const ffmpeg = createFFmpeg({ log: true });
+// FFmpeg 初期化
+async function initFFmpeg() {
+  if (ffmpegLoaded) return;
+
+  ffmpeg = FFmpeg.createFFmpeg({
+    log: true,
+    corePath: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
+  });
+
+  await ffmpeg.load();
+  ffmpegLoaded = true;
+  console.log("FFmpeg loaded");
+}
 
 // ファイル読み込み
 fileInput.onchange = () => {
@@ -52,28 +66,35 @@ function renderTimeline() {
     div.onmousedown = (e) => {
       const startX = e.clientX;
 
-      document.onmousemove = (e2) => {
+      const onMove = (e2) => {
         const dx = e2.clientX - startX;
         clip.x += dx;
         renderTimeline();
       };
 
-      document.onmouseup = () => {
-        document.onmousemove = null;
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
       };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
     };
 
     timeline.appendChild(div);
   });
 }
 
-// カット
+// カット処理
 document.getElementById("cutBtn").onclick = async () => {
-  if (!currentFile) return;
+  if (!currentFile) {
+    alert("動画を選択して");
+    return;
+  }
 
-  await ffmpeg.load();
+  await initFFmpeg();
 
-  ffmpeg.FS("writeFile", "input.mp4", await fetchFile(currentFile));
+  ffmpeg.FS("writeFile", "input.mp4", await FFmpeg.fetchFile(currentFile));
 
   await ffmpeg.run(
     "-i", "input.mp4",
@@ -84,11 +105,16 @@ document.getElementById("cutBtn").onclick = async () => {
   );
 
   const data = ffmpeg.FS("readFile", "output.mp4");
-  video.src = URL.createObjectURL(new Blob([data.buffer], { type: "video/mp4" }));
+
+  video.src = URL.createObjectURL(
+    new Blob([data.buffer], { type: "video/mp4" })
+  );
 };
 
 // 書き出し
 document.getElementById("exportBtn").onclick = () => {
+  if (!video.src) return;
+
   const a = document.createElement("a");
   a.href = video.src;
   a.download = "export.mp4";
