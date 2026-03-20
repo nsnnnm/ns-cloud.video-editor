@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Video Editor</title>
+  <title>Video Editor Pro</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,24 +12,20 @@
   <!-- ツールバー -->
   <div class="toolbar">
     <input type="file" id="fileInput" accept="video/*">
-    <button id="cutBtn">カット</button>
+    <button id="splitBtn">分割</button>
+    <button id="cutBtn">5秒カット</button>
     <button id="exportBtn">書き出し</button>
   </div>
 
-  <!-- メイン -->
   <div class="main">
-
-    <!-- 素材 -->
     <div class="sidebar">
       <h3>素材</h3>
       <div id="fileList"></div>
     </div>
 
-    <!-- プレビュー -->
     <div class="preview">
       <video id="video" controls></video>
     </div>
-
   </div>
 
   <!-- タイムライン -->

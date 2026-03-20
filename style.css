@@ -14,6 +14,7 @@ body {
 .toolbar {
   background: #2a2a2a;
   padding: 10px;
+  gap: 5px;
 }
 
 .main {
@@ -25,7 +26,6 @@ body {
   width: 200px;
   background: #252526;
   padding: 10px;
-  overflow-y: auto;
 }
 
 .preview {
@@ -53,4 +53,8 @@ video {
   background: #4caf50;
   border-radius: 5px;
   cursor: grab;
+}
+
+.clip.selected {
+  border: 2px solid yellow;
 }
