@@ -1,35 +1,33 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>Video Editor Pro</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Video Editor Pro</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="app">
 
-  <!-- ツールバー -->
-  <div class="toolbar">
-    <input type="file" id="fileInput" accept="video/*">
-    <button id="splitBtn">分割</button>
-    <button id="cutBtn">5秒カット</button>
-    <button id="exportBtn">書き出し</button>
+<div class="toolbar">
+  <input type="file" id="fileInput" accept="video/*">
+  <button id="addBtn">タイムライン追加</button>
+  <button id="splitBtn">分割</button>
+  <button id="exportBtn">書き出し</button>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <h3>素材</h3>
+    <div id="fileList"></div>
   </div>
 
-  <div class="main">
-    <div class="sidebar">
-      <h3>素材</h3>
-      <div id="fileList"></div>
-    </div>
-
-    <div class="preview">
-      <video id="video" controls></video>
-    </div>
+  <div class="preview">
+    <video id="video" controls></video>
   </div>
+</div>
 
-  <!-- タイムライン -->
-  <div class="timeline" id="timeline"></div>
+<div class="timeline" id="timeline"></div>
 
 </div>
 

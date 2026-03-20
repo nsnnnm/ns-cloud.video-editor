@@ -3,14 +3,14 @@ const video = document.getElementById("video");
 const fileList = document.getElementById("fileList");
 const timeline = document.getElementById("timeline");
 
+let files = [];
 let clips = [];
 let selectedClip = null;
-let currentFile = null;
 
-const pxPerSec = 50;
+const pxPerSec = 60;
 
 // FFmpeg
-let ffmpeg = null;
+let ffmpeg;
 let loaded = false;
 
 async function initFFmpeg() {
@@ -18,53 +18,69 @@ async function initFFmpeg() {
 
   ffmpeg = FFmpeg.createFFmpeg({
     log: true,
-    corePath: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js"
+    corePath: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
   });
 
   await ffmpeg.load();
   loaded = true;
 }
 
-// ファイル読み込み
+// ファイル読み込み（素材）
 fileInput.onchange = () => {
   const file = fileInput.files[0];
   if (!file) return;
 
-  currentFile = file;
+  files.push(file);
+
   const url = URL.createObjectURL(file);
-  video.src = url;
 
   const div = document.createElement("div");
   div.textContent = file.name;
+
+  div.onclick = () => {
+    video.src = url;
+    video.dataset.index = files.length - 1;
+  };
+
   fileList.appendChild(div);
 
-  // クリップ追加（動画全体）
+  video.src = url;
+  video.dataset.index = files.length - 1;
+};
+
+// タイムライン追加
+document.getElementById("addBtn").onclick = () => {
+  const index = video.dataset.index;
+  if (index === undefined) return;
+
+  const file = files[index];
+
   const clip = {
+    file,
     start: 0,
-    end: video.duration || 10
+    end: video.duration || 5
   };
 
-  video.onloadedmetadata = () => {
-    clip.end = video.duration;
-    clips = [clip];
-    renderTimeline();
-  };
+  clips.push(clip);
+  renderTimeline();
 };
 
 // タイムライン描画
 function renderTimeline() {
   timeline.innerHTML = "";
 
-  clips.forEach((clip, i) => {
+  let currentX = 0;
+
+  clips.forEach((clip) => {
     const div = document.createElement("div");
     div.className = "clip";
 
-    if (clip === selectedClip) {
-      div.classList.add("selected");
-    }
+    if (clip === selectedClip) div.classList.add("selected");
 
-    div.style.left = clip.start * pxPerSec + "px";
-    div.style.width = (clip.end - clip.start) * pxPerSec + "px";
+    const width = (clip.end - clip.start) * pxPerSec;
+
+    div.style.left = currentX + "px";
+    div.style.width = width + "px";
 
     // 選択
     div.onclick = (e) => {
@@ -73,27 +89,7 @@ function renderTimeline() {
       renderTimeline();
     };
 
-    // ドラッグ移動
-    div.onmousedown = (e) => {
-      const startX = e.clientX;
-      const originalStart = clip.start;
-
-      const onMove = (e2) => {
-        const dx = (e2.clientX - startX) / pxPerSec;
-        clip.start = Math.max(0, originalStart + dx);
-        clip.end = clip.start + (clip.end - clip.start);
-        renderTimeline();
-      };
-
-      const onUp = () => {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-      };
-
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
-    };
-
+    currentX += width;
     timeline.appendChild(div);
   });
 }
@@ -106,60 +102,60 @@ document.getElementById("splitBtn").onclick = () => {
 
   if (time <= selectedClip.start || time >= selectedClip.end) return;
 
-  const clip1 = {
-    start: selectedClip.start,
-    end: time
-  };
+  const c1 = { ...selectedClip, end: time };
+  const c2 = { ...selectedClip, start: time };
 
-  const clip2 = {
-    start: time,
-    end: selectedClip.end
-  };
+  const i = clips.indexOf(selectedClip);
+  clips.splice(i, 1, c1, c2);
 
-  const index = clips.indexOf(selectedClip);
-  clips.splice(index, 1, clip1, clip2);
-
-  selectedClip = clip2;
-
+  selectedClip = c2;
   renderTimeline();
 };
 
-// タイムラインクリックで再生移動
-timeline.onclick = (e) => {
-  const rect = timeline.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  video.currentTime = x / pxPerSec;
-};
-
-// カット（選択クリップ）
-document.getElementById("cutBtn").onclick = async () => {
-  if (!currentFile || !selectedClip) return;
+// 書き出し（複数クリップ結合🔥）
+document.getElementById("exportBtn").onclick = async () => {
+  if (clips.length === 0) return;
 
   await initFFmpeg();
 
-  ffmpeg.FS("writeFile", "input.mp4", await FFmpeg.fetchFile(currentFile));
+  let list = "";
+
+  for (let i = 0; i < clips.length; i++) {
+    const clip = clips[i];
+    const name = "input" + i + ".mp4";
+    const out = "clip" + i + ".mp4";
+
+    ffmpeg.FS("writeFile", name, await FFmpeg.fetchFile(clip.file));
+
+    await ffmpeg.run(
+      "-i", name,
+      "-ss", String(clip.start),
+      "-to", String(clip.end),
+      "-c", "copy",
+      out
+    );
+
+    list += `file ${out}\n`;
+  }
+
+  ffmpeg.FS("writeFile", "list.txt", list);
 
   await ffmpeg.run(
-    "-i", "input.mp4",
-    "-ss", String(selectedClip.start),
-    "-to", String(selectedClip.end),
+    "-f", "concat",
+    "-safe", "0",
+    "-i", "list.txt",
     "-c", "copy",
     "output.mp4"
   );
 
   const data = ffmpeg.FS("readFile", "output.mp4");
 
-  video.src = URL.createObjectURL(
+  const url = URL.createObjectURL(
     new Blob([data.buffer], { type: "video/mp4" })
   );
-};
-
-// 書き出し（現在動画）
-document.getElementById("exportBtn").onclick = () => {
-  if (!video.src) return;
 
   const a = document.createElement("a");
-  a.href = video.src;
-  a.download = "export.mp4";
+  a.href = url;
+  a.download = "video.mp4";
   a.click();
 };
