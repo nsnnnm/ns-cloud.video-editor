@@ -1,5 +1,10 @@
-// ===== import（これが正しい）=====
-import { FFmpeg, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/+esm";
+// ===== import =====
+import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/+esm";
+
+// ===== fetchFileの代替 =====
+async function fetchFile(file) {
+  return new Uint8Array(await file.arrayBuffer());
+}
 
 // ===== DOM =====
 const fileInput = document.getElementById("fileInput");
