@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Editor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ツールバー -->
+  <div class="toolbar">
+    <input type="file" id="fileInput" accept="video/*">
+    <button id="cutBtn">カット</button>
+    <button id="exportBtn">書き出し</button>
+  </div>
+
+  <!-- メイン -->
+  <div class="main">
+
+    <!-- 素材 -->
+    <div class="sidebar">
+      <h3>素材</h3>
+      <div id="fileList"></div>
+    </div>
+
+    <!-- プレビュー -->
+    <div class="preview">
+      <video id="video" controls></video>
+    </div>
+
+  </div>
+
+  <!-- タイムライン -->
+  <div class="timeline" id="timeline"></div>
+
+</div>
+
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
