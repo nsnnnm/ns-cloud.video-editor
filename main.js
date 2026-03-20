@@ -1,5 +1,5 @@
-// ===== FFmpegを直接import =====
-import { createFFmpeg, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/+esm";
+// ===== import（これが正しい）=====
+import { FFmpeg, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/+esm";
 
 // ===== DOM =====
 const fileInput = document.getElementById("fileInput");
@@ -15,19 +15,18 @@ let selected = null;
 const pxPerSec = 80;
 
 // ===== FFmpeg =====
-let ffmpeg = null;
+const ffmpeg = new FFmpeg();
 let loaded = false;
 
 async function initFFmpeg() {
   if (loaded) return;
 
-  ffmpeg = createFFmpeg({
-    log: true,
-    corePath: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
+  await ffmpeg.load({
+    coreURL: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
   });
 
-  await ffmpeg.load();
   loaded = true;
+  console.log("FFmpeg loaded");
 }
 
 // ===== ファイル読み込み =====
@@ -38,8 +37,7 @@ fileInput.onchange = async () => {
   const id = Date.now();
   const url = URL.createObjectURL(file);
 
-  const item = { id, file, url };
-  files.push(item);
+  files.push({ id, file, url });
 
   const div = document.createElement("div");
   div.textContent = file.name;
@@ -164,33 +162,37 @@ document.getElementById("exportBtn").onclick = async () => {
     const iname = "input" + i + ".mp4";
     const oname = "clip" + i + ".mp4";
 
-    ffmpeg.FS("writeFile", iname, await fetchFile(c.file));
+    await ffmpeg.writeFile(iname, await fetchFile(c.file));
 
-    await ffmpeg.run(
+    await ffmpeg.exec([
       "-i", iname,
       "-ss", String(c.start),
       "-to", String(c.end),
       "-c", "copy",
       oname
-    );
+    ]);
 
     list += `file ${oname}\n`;
   }
 
-  ffmpeg.FS("writeFile", "list.txt", list);
+  await ffmpeg.writeFile("list.txt", new TextEncoder().encode(list));
 
-  await ffmpeg.run(
+  await ffmpeg.exec([
     "-f", "concat",
     "-safe", "0",
     "-i", "list.txt",
     "-c", "copy",
     "output.mp4"
+  ]);
+
+  const data = await ffmpeg.readFile("output.mp4");
+
+  const url = URL.createObjectURL(
+    new Blob([data.buffer], { type: "video/mp4" })
   );
 
-  const data = ffmpeg.FS("readFile", "output.mp4");
-
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([data.buffer], { type: "video/mp4" }));
+  a.href = url;
   a.download = "video.mp4";
   a.click();
 };
