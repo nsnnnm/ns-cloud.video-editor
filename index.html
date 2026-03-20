@@ -2,34 +2,24 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Video Editor Pro</title>
+<title>Editor</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="app">
-
 <div class="toolbar">
-  <input type="file" id="fileInput" accept="video/*">
-  <button id="addBtn">タイムライン追加</button>
+  <input type="file" id="fileInput" multiple accept="video/*,audio/*">
+  <button id="addBtn">追加</button>
   <button id="splitBtn">分割</button>
   <button id="exportBtn">書き出し</button>
 </div>
 
 <div class="main">
-  <div class="sidebar">
-    <h3>素材</h3>
-    <div id="fileList"></div>
-  </div>
-
-  <div class="preview">
-    <video id="video" controls></video>
-  </div>
+  <div id="fileList"></div>
+  <video id="video" controls></video>
 </div>
 
-<div class="timeline" id="timeline"></div>
-
-</div>
+<div id="timeline"></div>
 
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 <script src="main.js"></script>
