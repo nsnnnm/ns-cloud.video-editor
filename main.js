@@ -25,13 +25,13 @@ async function initFFmpeg() {
   loaded = true;
 }
 
-// ファイル読み込み（素材）
+// ✅ ファイル読み込み（修正済み）
 fileInput.onchange = () => {
   const file = fileInput.files[0];
   if (!file) return;
 
   files.push(file);
-
+  const index = files.length - 1;
   const url = URL.createObjectURL(file);
 
   const div = document.createElement("div");
@@ -39,13 +39,18 @@ fileInput.onchange = () => {
 
   div.onclick = () => {
     video.src = url;
-    video.dataset.index = files.length - 1;
+    video.dataset.index = index;
   };
 
   fileList.appendChild(div);
 
+  // 👇ここ重要（metadata待つ）
   video.src = url;
-  video.dataset.index = files.length - 1;
+  video.dataset.index = index;
+
+  video.onloadedmetadata = () => {
+    renderTimeline(); // ←これが超重要
+  };
 };
 
 // タイムライン追加
@@ -55,17 +60,21 @@ document.getElementById("addBtn").onclick = () => {
 
   const file = files[index];
 
+  // duration確実に取る
+  const duration = video.duration || 5;
+
   const clip = {
     file,
     start: 0,
-    end: video.duration || 5
+    end: duration
   };
 
   clips.push(clip);
+
   renderTimeline();
 };
 
-// タイムライン描画
+// タイムライン描画（強化）
 function renderTimeline() {
   timeline.innerHTML = "";
 
@@ -77,12 +86,12 @@ function renderTimeline() {
 
     if (clip === selectedClip) div.classList.add("selected");
 
-    const width = (clip.end - clip.start) * pxPerSec;
+    const duration = clip.end - clip.start;
+    const width = Math.max(10, duration * pxPerSec); // ←0防止
 
     div.style.left = currentX + "px";
     div.style.width = width + "px";
 
-    // 選択
     div.onclick = (e) => {
       e.stopPropagation();
       selectedClip = clip;
@@ -112,7 +121,7 @@ document.getElementById("splitBtn").onclick = () => {
   renderTimeline();
 };
 
-// 書き出し（複数クリップ結合🔥）
+// 書き出し
 document.getElementById("exportBtn").onclick = async () => {
   if (clips.length === 0) return;
 
