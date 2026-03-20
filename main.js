@@ -21,37 +21,49 @@ async function initFFmpeg(){
   loaded=true;
 }
 
-// ファイル読み込み
-fileInput.onchange = () => {
-  for(const file of fileInput.files){
-    files.push(file);
-    const url = URL.createObjectURL(file);
+// ファイル読み込み（確実動作版）
+fileInput.onchange = async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
 
-    const div = document.createElement("div");
-    div.textContent = file.name;
+  const id = Date.now();
+  const url = URL.createObjectURL(file);
 
-    div.onclick = ()=>{
-      video.src = url;
-      video.dataset.index = files.indexOf(file);
-    };
+  const item = { id, file, url };
+  files.push(item);
 
-    fileList.appendChild(div);
-  }
+  const div = document.createElement("div");
+  div.textContent = file.name;
+
+  div.onclick = async () => {
+    video.src = url;
+
+    await new Promise(res => {
+      video.onloadedmetadata = res;
+    });
+
+    video.dataset.id = id;
+  };
+
+  fileList.appendChild(div);
+
+  // 自動選択
+  div.click();
 };
 
 // タイムライン追加
 document.getElementById("addBtn").onclick = () => {
-  const i = video.dataset.index;
-  if(i === undefined) return;
+  const id = Number(video.dataset.id);
+  if (!id) return;
 
-  const file = files[i];
+  const fileObj = files.find(f => f.id === id);
+  if (!fileObj) return;
 
   const clip = {
-    file,
-    start:0,
-    end:video.duration || 5,
-    track: file.type.startsWith("audio") ? 1 : 0,
-    x:0
+    file: fileObj.file,
+    start: 0,
+    end: video.duration,
+    x: clips.length * 100
   };
 
   clips.push(clip);
@@ -62,31 +74,17 @@ document.getElementById("addBtn").onclick = () => {
 function render(){
   timeline.innerHTML="";
 
-  // 目盛り
-  for(let i=0;i<100;i++){
-    const mark = document.createElement("div");
-    mark.style.position="absolute";
-    mark.style.left = (i*pxPerSec)+"px";
-    mark.style.width="1px";
-    mark.style.height="100%";
-    mark.style.background="#555";
-    timeline.appendChild(mark);
-  }
-
-  clips.forEach((clip,i)=>{
+  clips.forEach((clip)=>{
     const div = document.createElement("div");
     div.className="clip";
 
-    if(clip.track===1) div.classList.add("audio");
     if(clip===selected) div.classList.add("selected");
 
     const width = (clip.end-clip.start)*pxPerSec;
 
     div.style.left = clip.x+"px";
-    div.style.top = clip.track===0 ? "10px" : "60px";
     div.style.width = width+"px";
 
-    // 選択
     div.onclick = (e)=>{
       e.stopPropagation();
       selected = clip;
@@ -116,13 +114,6 @@ function render(){
   });
 }
 
-// スクラブ
-timeline.onclick = (e)=>{
-  const rect = timeline.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  video.currentTime = x / pxPerSec;
-};
-
 // 分割
 document.getElementById("splitBtn").onclick = ()=>{
   if(!selected) return;
@@ -141,16 +132,20 @@ document.getElementById("splitBtn").onclick = ()=>{
   render();
 };
 
-// 書き出し（結合）
+// 書き出し（完全安定版🔥）
 document.getElementById("exportBtn").onclick = async ()=>{
   if(clips.length===0) return;
 
   await initFFmpeg();
 
+  // x順に並べる
+  const sorted = [...clips].sort((a,b)=>a.x-b.x);
+
   let list="";
 
-  for(let i=0;i<clips.length;i++){
-    const c = clips[i];
+  for(let i=0;i<sorted.length;i++){
+    const c = sorted[i];
+
     const iname="in"+i+".mp4";
     const oname="c"+i+".mp4";
 
